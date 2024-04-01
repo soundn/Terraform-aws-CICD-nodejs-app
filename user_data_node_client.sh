@@ -1,8 +1,14 @@
 #!/bin/bash
 
-# Update and install Node.js and Postgres client
+#!/bin/bash
+
+# Update package lists
 apt-get update
-apt-get install -y curl
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-apt-get install -y nodejs
+
+# Install Nginx
+apt-get install -y nginx
+
+# Start Nginx service
+systemctl start nginx
+
 apt-get install -y postgresql-client
