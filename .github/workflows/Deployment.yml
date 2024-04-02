@@ -1,0 +1,55 @@
+name: Deploy Node.js App with Database & Load Balancer
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Terraform CLI
+        uses: hashicorp/setup-terraform@v2
+      - name: Apply Terraform Configuration
+        run: |
+          aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws configure set region us-east-1  # Replace with your desired region
+          terraform init
+          terraform apply -auto-approve
+
+  build-and-deploy nodejs app:
+    runs-on: ubuntu-latest
+    needs: deploy-infrastructure  # Wait for infrastructure provisioning
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build Node.js App
+        run: npm install && npm run build
+      - name: Get Node.js Client IPs from Terraform State
+        run: |
+          terraform workspace select main  # Replace with your workspace name if different
+          NODE_CLIENT_IPS=$(terraform outputs -json | jq -r '.node_client_ips.value | @csv')
+          echo "NODE_CLIENT_IPS=$NODE_CLIENT_IPS" >> $GITHUB_ENV  # Export IPs as environment variables
+      - name: Deploy to EC2 Instances (loop through IPs)
+        uses: appleboy/scp-action@master
+        with:
+          <<: *for-loop  # Refer to loop definition below
+        env:
+          NODE_CLIENT_IP: ${{ env.NODE_CLIENT_IPS }}  # Access IP from environment variable
+      - name: Clone and Run Database (Optional)
+        # ... (steps to clone and run the database, potentially on a separate EC2 instance group)
+
+jobs:
+  for-loop:  # Define a reusable job for deployment loop
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Single Node.js Client
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ env.NODE_CLIENT_IP }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "build/*"
+          target: "/var/www/html"

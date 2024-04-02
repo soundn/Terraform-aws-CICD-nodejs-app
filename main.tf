@@ -5,7 +5,7 @@ resource "aws_instance" "node_client" {
   key_name      = var.key_name
   vpc_security_group_ids = var.vpc_security_group_ids
 
-  user_data = filebase64("user_data_node_client.sh")
+  user_data = file("user_data_node_client.sh")
 
   tags = {
     Name = "Node Client Instance"
@@ -19,7 +19,7 @@ resource "aws_instance" "postgres_server" {
   key_name      = var.key_name
   vpc_security_group_ids = var.vpc_security_group_ids
 
-  user_data = filebase64("user_data_postgres_server.sh")
+  user_data = file("user_data_postgres_server.sh")
 
   tags = {
     Name = "Postgres Server Instance"
